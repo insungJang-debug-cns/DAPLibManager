@@ -1,3 +1,6 @@
 <Solution>
+  <Project Path="src/Application/Application.csproj" Id="a1590270-1060-4e1f-b233-47ccb6195a85" />
   <Project Path="src/DAPLibManager.UI/DAPLibManager.UI.csproj" />
+  <Project Path="src/Domain/Domain.csproj" Id="84eeef21-e5ec-4b4e-ab7d-0f91e6003a4e" />
+  <Project Path="src/Infrastructure/Infrastructure.csproj" Id="5685aaed-b75e-4a40-b6ad-aaa58633e8c7" />
 </Solution>
