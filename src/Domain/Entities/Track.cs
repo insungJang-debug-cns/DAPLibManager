@@ -11,6 +11,8 @@ public class Track
     public string? Genre { get; private set; }
     public int? Year { get; private set; }
     public string FilePath { get; private set; }
+    public long FileSize { get; private set; }
+    public DateTime LastModifiedUtc { get; private set; }
 
     public Track(
         Guid id,
@@ -21,7 +23,9 @@ public class Track
         int? trackNumber = null,
         TimeSpan duration = default,
         string? genre = null,
-        int? year = null)
+        int? year = null,
+        long fileSize = 0,
+        DateTime lastModifiedUtc = default)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new ArgumentException("Track title cannot be empty.", nameof(title));
@@ -37,6 +41,14 @@ public class Track
         Duration = duration;
         Genre = genre;
         Year = year;
+        FileSize = fileSize;
+        LastModifiedUtc = lastModifiedUtc;
+    }
+
+    public void UpdateFileInfo(long fileSize, DateTime lastModifiedUtc)
+    {
+        FileSize = fileSize;
+        LastModifiedUtc = lastModifiedUtc;
     }
 
     public void UpdateMetadata(

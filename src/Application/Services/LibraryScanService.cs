@@ -8,11 +8,16 @@ public class LibraryScanService : ILibraryScanService
 {
     private readonly IMusicFileScanner _scanner;
     private readonly IMetadataReader _metadataReader;
+    private readonly ITrackRepository _trackRepository;
 
-    public LibraryScanService(IMusicFileScanner scanner, IMetadataReader metadataReader)
+    public LibraryScanService(
+        IMusicFileScanner scanner,
+        IMetadataReader metadataReader,
+        ITrackRepository trackRepository)
     {
         _scanner = scanner;
         _metadataReader = metadataReader;
+        _trackRepository = trackRepository;
     }
 
     public async Task<IReadOnlyList<Track>> ScanLibraryAsync(
@@ -36,6 +41,9 @@ public class LibraryScanService : ILibraryScanService
                 tracks.Add(track);
         });
 
-        return [.. tracks];
+        var result = tracks.ToArray();
+        await _trackRepository.SaveTracksAsync(result, cancellationToken);
+
+        return result;
     }
 }

@@ -1,7 +1,10 @@
+using System.IO;
 using Application.Interfaces;
 using Application.Services;
 using Infrastructure.FileSystem;
 using Infrastructure.Metadata;
+using Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DAPLibManager.UI;
@@ -19,19 +22,37 @@ public partial class App
         ConfigureServices(services);
         _serviceProvider = services.BuildServiceProvider();
 
+        // Ensure DB schema and FTS5 index are initialized on startup
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<MusicLibraryDbContext>();
+        db.Database.EnsureCreated();
+        db.EnsureSchemaUpToDateAsync().GetAwaiter().GetResult();
+        db.SetupFts5Async().GetAwaiter().GetResult();
+
         var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
         mainWindow.Show();
     }
 
     private static void ConfigureServices(IServiceCollection services)
     {
+        // Persistence
+        var dbPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "DAPLibManager", "library.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+
+        services.AddDbContextFactory<MusicLibraryDbContext>(options =>
+            options.UseSqlite($"Data Source={dbPath}"));
+
         // Infrastructure
         services.AddSingleton<AudioFileDetector>();
         services.AddSingleton<IMusicFileScanner, MusicFileScanner>();
         services.AddSingleton<IMetadataReader, TagLibMetadataReader>();
+        services.AddSingleton<ITrackRepository, TrackRepository>();
 
         // Application
         services.AddSingleton<ILibraryScanService, LibraryScanService>();
+        services.AddSingleton<ILibrarySyncService, LibrarySyncService>();
 
         // UI
         services.AddSingleton<MainWindow>();

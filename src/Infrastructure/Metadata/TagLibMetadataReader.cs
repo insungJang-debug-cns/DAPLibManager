@@ -21,7 +21,7 @@ public class TagLibMetadataReader : IMetadataReader
             using var file = TagLib.File.Create(filePath);
 
             var tag = file.Tag;
-            var title = NullIfEmpty(tag.Title) ?? Path.GetFileNameWithoutExtension(filePath);
+            var title = Path.GetFileNameWithoutExtension(filePath);
             var artistName = NullIfEmpty(tag.FirstPerformer);
             var albumTitle = NullIfEmpty(tag.Album);
             var genre = NullIfEmpty(tag.FirstGenre);
@@ -41,8 +41,17 @@ public class TagLibMetadataReader : IMetadataReader
                 year: year
             );
         }
-        catch (Exception)
+        catch (CorruptFileException ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[MetadataReader] Corrupt, falling back to filename-only: {filePath}: {ex.Message}");
+            return new Track(
+                id: Guid.NewGuid(),
+                title: Path.GetFileNameWithoutExtension(filePath),
+                filePath: filePath);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MetadataReader] {filePath}: {ex.GetType().Name}: {ex.Message}");
             return null;
         }
     }
