@@ -94,6 +94,17 @@ public sealed class TrackRepository(IDbContextFactory<MusicLibraryDbContext> fac
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Track>> GetTracksByFilePathsAsync(
+        IEnumerable<string> filePaths, CancellationToken cancellationToken = default)
+    {
+        await using var context = await factory.CreateDbContextAsync(cancellationToken);
+        var pathList = filePaths.ToList();
+        return await context.Tracks
+            .Where(t => pathList.Contains(t.FilePath))
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+    }
+
     private static string BuildFtsQuery(string query)
     {
         // Strip FTS5 special characters, append * for prefix matching per term

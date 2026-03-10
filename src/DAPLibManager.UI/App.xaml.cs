@@ -4,6 +4,7 @@ using Application.Services;
 using Infrastructure.FileSystem;
 using Infrastructure.Metadata;
 using Infrastructure.Persistence;
+using Infrastructure.Playlists;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -53,6 +54,7 @@ public partial class App
         // Application
         services.AddSingleton<ILibraryScanService, LibraryScanService>();
         services.AddSingleton<ILibrarySyncService, LibrarySyncService>();
+        services.AddSingleton<IPlaylistRepository, M3uPlaylistRepository>();
 
         // UI
         services.AddSingleton<MainWindow>();

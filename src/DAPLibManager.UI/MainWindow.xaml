@@ -3,8 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:converters="clr-namespace:DAPLibManager.UI.Converters"
         Title="DAP Library Manager"
-        Height="600" Width="900"
-        MinHeight="400" MinWidth="600">
+        Height="600" Width="1200"
+        MinHeight="400" MinWidth="800">
 
     <Window.Resources>
         <converters:RelativePathConverter x:Key="RelativePath" />
@@ -58,26 +58,107 @@
                  VerticalContentAlignment="Center"
                  TextChanged="SearchBox_TextChanged" />
 
-        <!-- Track List -->
-        <ListView x:Name="TrackListView"
-                  Grid.Row="4"
-                  VirtualizingPanel.IsVirtualizing="True"
-                  VirtualizingPanel.VirtualizationMode="Recycling">
-            <ListView.View>
-                <GridView>
-                    <GridViewColumn Header="Title" Width="280"
-                                    DisplayMemberBinding="{Binding Title}" />
-                    <GridViewColumn Header="Artist" Width="180"
-                                    DisplayMemberBinding="{Binding ArtistName}" />
-                    <GridViewColumn Header="Album" Width="180"
-                                    DisplayMemberBinding="{Binding AlbumTitle}" />
-                    <GridViewColumn Header="Duration" Width="80"
-                                    DisplayMemberBinding="{Binding Duration, StringFormat=hh\\:mm\\:ss}" />
-                    <GridViewColumn Header="Path" Width="300"
-                                    DisplayMemberBinding="{Binding FilePath, Converter={StaticResource RelativePath}}" />
-                </GridView>
-            </ListView.View>
-        </ListView>
+        <!-- 3-panel content -->
+        <Grid Grid.Row="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*" MinWidth="200" />
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="160" MinWidth="100" />
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="2*" MinWidth="150" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Library TrackListView -->
+            <ListView x:Name="TrackListView"
+                      Grid.Column="0"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      PreviewMouseLeftButtonDown="TrackListView_PreviewMouseLeftButtonDown"
+                      PreviewMouseMove="TrackListView_PreviewMouseMove">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="Title" Width="220"
+                                        DisplayMemberBinding="{Binding Title}" />
+                        <GridViewColumn Header="Artist" Width="140"
+                                        DisplayMemberBinding="{Binding ArtistName}" />
+                        <GridViewColumn Header="Album" Width="140"
+                                        DisplayMemberBinding="{Binding AlbumTitle}" />
+                        <GridViewColumn Header="Time" Width="60"
+                                        DisplayMemberBinding="{Binding Duration, StringFormat=mm\\:ss}" />
+                        <GridViewColumn Header="Path" Width="200"
+                                        DisplayMemberBinding="{Binding FilePath, Converter={StaticResource RelativePath}}" />
+                    </GridView>
+                </ListView.View>
+            </ListView>
+
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Background="Transparent" />
+
+            <!-- Playlist panel -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,4">
+                    <TextBlock Text="Playlists" VerticalAlignment="Center" FontWeight="SemiBold" />
+                    <Button x:Name="NewPlaylistButton"
+                            Content="+" Width="24" Height="24"
+                            HorizontalAlignment="Right"
+                            IsEnabled="False"
+                            Click="NewPlaylistButton_Click" />
+                </Grid>
+
+                <ListView x:Name="PlaylistListView"
+                          Grid.Row="1"
+                          AllowDrop="True"
+                          DragOver="PlaylistListView_DragOver"
+                          Drop="PlaylistListView_Drop"
+                          SelectionChanged="PlaylistListView_SelectionChanged">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Padding" Value="4,3" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+
+                <Button x:Name="DeletePlaylistButton"
+                        Grid.Row="2"
+                        Content="Delete"
+                        Height="28" Margin="0,4,0,0"
+                        IsEnabled="False"
+                        Click="DeletePlaylistButton_Click" />
+            </Grid>
+
+            <GridSplitter Grid.Column="3" HorizontalAlignment="Stretch" Background="Transparent" />
+
+            <!-- Playlist track list -->
+            <ListView x:Name="PlaylistTrackListView"
+                      Grid.Column="4"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      AllowDrop="True"
+                      DragOver="PlaylistTrackListView_DragOver"
+                      Drop="PlaylistTrackListView_Drop">
+                <ListView.ContextMenu>
+                    <ContextMenu Opened="PlaylistTrackContextMenu_Opened" />
+                </ListView.ContextMenu>
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="Title" Width="220"
+                                        DisplayMemberBinding="{Binding Title}" />
+                        <GridViewColumn Header="Time" Width="60"
+                                        DisplayMemberBinding="{Binding Duration, StringFormat=mm\\:ss}" />
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </Grid>
 
         <!-- Status bar -->
         <Grid Grid.Row="5" Margin="0,6,0,0">

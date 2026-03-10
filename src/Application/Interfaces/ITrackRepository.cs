@@ -16,4 +16,5 @@ public interface ITrackRepository
     Task UpdateTrackAsync(Track track, CancellationToken cancellationToken = default);
     Task DeleteTracksAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Track>> GetTracksInFolderAsync(string rootFolder, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Track>> GetTracksByFilePathsAsync(IEnumerable<string> filePaths, CancellationToken cancellationToken = default);
 }
