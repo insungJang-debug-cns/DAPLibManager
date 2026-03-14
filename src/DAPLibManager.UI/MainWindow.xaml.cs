@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -24,7 +25,11 @@ public partial class MainWindow : Window
 
     private List<Playlist> _playlists = [];
     private Playlist? _currentPlaylist;
+    private ObservableCollection<PlaylistEntry>? _playlistTrackItems;
+
     private Point _dragStartPoint;
+    private Point _playlistDragStartPoint;
+    private List<PlaylistEntry>? _dragOriginalOrder;
 
     public MainWindow(
         ILibrarySyncService librarySyncService,
@@ -35,6 +40,12 @@ public partial class MainWindow : Window
         _librarySyncService = librarySyncService;
         _trackRepository = trackRepository;
         _playlistRepository = playlistRepository;
+
+        Loaded += async (_, _) =>
+        {
+            if (_selectedFolder != null)
+                await ExecuteScanAsync();
+        };
 
         _dotTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _dotTimer.Tick += (_, _) =>
@@ -84,13 +95,16 @@ public partial class MainWindow : Window
         NewPlaylistButton.IsEnabled = true;
         StatusText.Text = string.Empty;
         TrackListView.ItemsSource = null;
+        _playlistTrackItems = null;
         PlaylistTrackListView.ItemsSource = null;
 
         new AppSettings { LastFolder = _selectedFolder }.Save();
         _ = LoadPlaylistsAsync();
     }
 
-    private async void ScanButton_Click(object sender, RoutedEventArgs e)
+    private async void ScanButton_Click(object sender, RoutedEventArgs e) => await ExecuteScanAsync();
+
+    private async Task ExecuteScanAsync()
     {
         if (string.IsNullOrEmpty(_selectedFolder)) return;
 
@@ -164,11 +178,19 @@ public partial class MainWindow : Window
         PlaylistListView.ItemsSource = _playlists;
     }
 
+    private void RefreshPlaylistTracks()
+    {
+        _playlistTrackItems = _currentPlaylist != null
+            ? new ObservableCollection<PlaylistEntry>(_currentPlaylist.Entries)
+            : null;
+        PlaylistTrackListView.ItemsSource = _playlistTrackItems;
+    }
+
     private void PlaylistListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         _currentPlaylist = PlaylistListView.SelectedItem as Playlist;
         DeletePlaylistButton.IsEnabled = _currentPlaylist != null;
-        PlaylistTrackListView.ItemsSource = _currentPlaylist?.Entries;
+        RefreshPlaylistTracks();
     }
 
     private async void NewPlaylistButton_Click(object sender, RoutedEventArgs e)
@@ -199,6 +221,7 @@ public partial class MainWindow : Window
         _currentPlaylist = null;
         PlaylistListView.ItemsSource = null;
         PlaylistListView.ItemsSource = _playlists;
+        _playlistTrackItems = null;
         PlaylistTrackListView.ItemsSource = null;
         DeletePlaylistButton.IsEnabled = false;
     }
@@ -249,22 +272,95 @@ public partial class MainWindow : Window
         await _playlistRepository.SavePlaylistAsync(target);
 
         if (_currentPlaylist == target)
-            PlaylistTrackListView.ItemsSource = _currentPlaylist.Entries;
+            RefreshPlaylistTracks();
 
         StatusText.Text = $"\"{track.Title}\" → \"{target.Name}\" 추가됨";
     }
 
+    private void PlaylistTrackListView_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _playlistDragStartPoint = e.GetPosition(null);
+    }
+
+    private void PlaylistTrackListView_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed) return;
+        if (PlaylistTrackListView.SelectedItem is not PlaylistEntry entry) return;
+        if (_playlistTrackItems == null) return;
+
+        var pos = e.GetPosition(null);
+        var diff = _playlistDragStartPoint - pos;
+        if (Math.Abs(diff.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(diff.Y) < SystemParameters.MinimumVerticalDragDistance)
+            return;
+
+        _dragOriginalOrder = [.._playlistTrackItems];
+
+        var result = DragDrop.DoDragDrop(
+            PlaylistTrackListView,
+            new DataObject(typeof(PlaylistEntry), entry),
+            DragDropEffects.Move);
+
+        // 드롭 취소 시 원래 순서로 복원
+        if (result == DragDropEffects.None && _dragOriginalOrder != null)
+        {
+            for (int i = 0; i < _dragOriginalOrder.Count; i++)
+            {
+                var cur = _playlistTrackItems.IndexOf(_dragOriginalOrder[i]);
+                if (cur != i) _playlistTrackItems.Move(cur, i);
+            }
+        }
+
+        _dragOriginalOrder = null;
+    }
+
     private void PlaylistTrackListView_DragOver(object sender, DragEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(typeof(Track)) && _currentPlaylist != null
-            ? DragDropEffects.Copy
-            : DragDropEffects.None;
+        if (_currentPlaylist == null || _playlistTrackItems == null)
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Data.GetDataPresent(typeof(Track)))
+        {
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Data.GetDataPresent(typeof(PlaylistEntry)))
+        {
+            var draggedEntry = (PlaylistEntry)e.Data.GetData(typeof(PlaylistEntry));
+            var currentIdx = _playlistTrackItems.IndexOf(draggedEntry);
+            var toIndex = GetDropTargetIndex(PlaylistTrackListView, e);
+
+            if (currentIdx >= 0 && currentIdx != toIndex)
+                _playlistTrackItems.Move(currentIdx, toIndex);
+
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+            return;
+        }
+
+        e.Effects = DragDropEffects.None;
         e.Handled = true;
     }
 
     private async void PlaylistTrackListView_Drop(object sender, DragEventArgs e)
     {
-        if (_currentPlaylist == null) return;
+        if (_currentPlaylist == null || _playlistTrackItems == null) return;
+
+        // 재정렬 완료 - 현재 ObservableCollection 순서를 Playlist에 저장
+        if (e.Data.GetDataPresent(typeof(PlaylistEntry)))
+        {
+            _currentPlaylist.ReorderEntries(_playlistTrackItems);
+            await _playlistRepository.SavePlaylistAsync(_currentPlaylist);
+            return;
+        }
+
+        // 라이브러리에서 추가
         if (!e.Data.GetDataPresent(typeof(Track))) return;
         var track = (Track)e.Data.GetData(typeof(Track));
 
@@ -275,9 +371,20 @@ public partial class MainWindow : Window
         }
 
         await _playlistRepository.SavePlaylistAsync(_currentPlaylist);
-        PlaylistTrackListView.ItemsSource = null;
-        PlaylistTrackListView.ItemsSource = _currentPlaylist.Entries;
+        _playlistTrackItems.Add(_currentPlaylist.Entries[^1]);
         StatusText.Text = $"\"{track.Title}\" → \"{_currentPlaylist.Name}\" 추가됨";
+    }
+
+    private static int GetDropTargetIndex(ListView listView, DragEventArgs e)
+    {
+        var pos = e.GetPosition(listView);
+        for (int i = 0; i < listView.Items.Count; i++)
+        {
+            if (listView.ItemContainerGenerator.ContainerFromIndex(i) is not ListViewItem item) continue;
+            var midY = item.TranslatePoint(new Point(0, item.ActualHeight / 2), listView).Y;
+            if (pos.Y < midY) return i;
+        }
+        return Math.Max(0, listView.Items.Count - 1);
     }
 
     // ── Library Context Menu ─────────────────────────────────────────────────
@@ -324,7 +431,9 @@ public partial class MainWindow : Window
         await _playlistRepository.SavePlaylistAsync(playlist);
 
         if (_currentPlaylist == playlist)
-            PlaylistTrackListView.ItemsSource = _currentPlaylist.Entries;
+        {
+            _playlistTrackItems?.Add(playlist.Entries[^1]);
+        }
 
         StatusText.Text = $"\"{track.Title}\" → \"{playlist.Name}\" 추가됨";
     }
@@ -349,14 +458,14 @@ public partial class MainWindow : Window
 
     private async Task RemoveSelectedTrackFromPlaylistAsync()
     {
-        if (_currentPlaylist == null) return;
+        if (_currentPlaylist == null || _playlistTrackItems == null) return;
         var idx = PlaylistTrackListView.SelectedIndex;
         if (idx < 0) return;
 
+        var entry = _playlistTrackItems[idx];
         _currentPlaylist.RemoveAt(idx);
         await _playlistRepository.SavePlaylistAsync(_currentPlaylist);
-        PlaylistTrackListView.ItemsSource = null;
-        PlaylistTrackListView.ItemsSource = _currentPlaylist.Entries;
+        _playlistTrackItems.RemoveAt(idx);
     }
 
     // ── Scanning State ───────────────────────────────────────────────────────
