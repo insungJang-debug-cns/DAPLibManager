@@ -163,6 +163,8 @@
                       Grid.Column="4"
                       VirtualizingPanel.IsVirtualizing="True"
                       AllowDrop="True"
+                      DragEnter="PlaylistTrackListView_DragEnter"
+                      DragLeave="PlaylistTrackListView_DragLeave"
                       DragOver="PlaylistTrackListView_DragOver"
                       Drop="PlaylistTrackListView_Drop"
                       PreviewMouseLeftButtonDown="PlaylistTrackListView_PreviewMouseLeftButtonDown"

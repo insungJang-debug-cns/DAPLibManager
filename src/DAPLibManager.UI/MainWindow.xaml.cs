@@ -30,6 +30,7 @@ public partial class MainWindow : Window
     private Point _dragStartPoint;
     private Point _playlistDragStartPoint;
     private List<PlaylistEntry>? _dragOriginalOrder;
+    private PlaylistEntry? _ghostEntry;
 
     public MainWindow(
         ILibrarySyncService librarySyncService,
@@ -314,6 +315,42 @@ public partial class MainWindow : Window
         _dragOriginalOrder = null;
     }
 
+    private void PlaylistTrackListView_DragEnter(object sender, DragEventArgs e)
+    {
+        if (_currentPlaylist == null || _playlistTrackItems == null) return;
+        if (!e.Data.GetDataPresent(typeof(Track))) return;
+        if (_ghostEntry != null) return; // 이미 ghost 있음
+
+        var track = (Track)e.Data.GetData(typeof(Track));
+        if (_currentPlaylist.Entries.Any(en => en.TrackPath.Equals(track.FilePath, StringComparison.OrdinalIgnoreCase)))
+            return; // 이미 있는 곡은 ghost 안 만듦
+
+        _ghostEntry = new PlaylistEntry(track.FilePath, $"+ {track.Title}", track.Duration);
+        var idx = GetDropTargetIndex(PlaylistTrackListView, e);
+        _playlistTrackItems.Insert(idx, _ghostEntry);
+    }
+
+    private void PlaylistTrackListView_DragLeave(object sender, DragEventArgs e)
+    {
+        // 실제로 ListView 밖으로 나갔을 때만 ghost 제거
+        var pos = e.GetPosition(PlaylistTrackListView);
+        if (pos.X >= 0 && pos.Y >= 0 &&
+            pos.X < PlaylistTrackListView.ActualWidth &&
+            pos.Y < PlaylistTrackListView.ActualHeight)
+            return;
+
+        RemoveGhost();
+    }
+
+    private void RemoveGhost()
+    {
+        if (_ghostEntry != null && _playlistTrackItems != null)
+        {
+            _playlistTrackItems.Remove(_ghostEntry);
+            _ghostEntry = null;
+        }
+    }
+
     private void PlaylistTrackListView_DragOver(object sender, DragEventArgs e)
     {
         if (_currentPlaylist == null || _playlistTrackItems == null)
@@ -325,6 +362,14 @@ public partial class MainWindow : Window
 
         if (e.Data.GetDataPresent(typeof(Track)))
         {
+            // ghost 이동
+            if (_ghostEntry != null)
+            {
+                var toIndex = GetDropTargetIndex(PlaylistTrackListView, e);
+                var curIdx = _playlistTrackItems.IndexOf(_ghostEntry);
+                if (curIdx >= 0 && curIdx != toIndex)
+                    _playlistTrackItems.Move(curIdx, toIndex);
+            }
             e.Effects = DragDropEffects.Copy;
             e.Handled = true;
             return;
@@ -352,7 +397,7 @@ public partial class MainWindow : Window
     {
         if (_currentPlaylist == null || _playlistTrackItems == null) return;
 
-        // 재정렬 완료 - 현재 ObservableCollection 순서를 Playlist에 저장
+        // 재정렬 완료
         if (e.Data.GetDataPresent(typeof(PlaylistEntry)))
         {
             _currentPlaylist.ReorderEntries(_playlistTrackItems);
@@ -360,18 +405,21 @@ public partial class MainWindow : Window
             return;
         }
 
-        // 라이브러리에서 추가
+        // 라이브러리에서 추가 - ghost 위치에 실제 항목 삽입
         if (!e.Data.GetDataPresent(typeof(Track))) return;
         var track = (Track)e.Data.GetData(typeof(Track));
 
-        if (!_currentPlaylist.AddTrack(track))
+        var insertIdx = _ghostEntry != null ? _playlistTrackItems.IndexOf(_ghostEntry) : _playlistTrackItems.Count;
+        RemoveGhost();
+
+        if (!_currentPlaylist.InsertTrack(insertIdx, track))
         {
             StatusText.Text = $"\"{track.Title}\" 은(는) 이미 \"{_currentPlaylist.Name}\"에 있습니다.";
             return;
         }
 
+        _playlistTrackItems.Insert(insertIdx, _currentPlaylist.Entries[insertIdx]);
         await _playlistRepository.SavePlaylistAsync(_currentPlaylist);
-        _playlistTrackItems.Add(_currentPlaylist.Entries[^1]);
         StatusText.Text = $"\"{track.Title}\" → \"{_currentPlaylist.Name}\" 추가됨";
     }
 

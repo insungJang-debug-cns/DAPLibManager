@@ -37,6 +37,15 @@ public sealed class Playlist
         return true;
     }
 
+    public bool InsertTrack(int index, Track track)
+    {
+        if (_entries.Any(e => e.TrackPath.Equals(track.FilePath, StringComparison.OrdinalIgnoreCase)))
+            return false;
+        index = Math.Clamp(index, 0, _entries.Count);
+        _entries.Insert(index, new PlaylistEntry(track.FilePath, track.Title, track.Duration));
+        return true;
+    }
+
     public void RemoveAt(int index) => _entries.RemoveAt(index);
 
     public void Move(int fromIndex, int toIndex)
