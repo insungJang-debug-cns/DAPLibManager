@@ -38,4 +38,21 @@ public sealed class Playlist
     }
 
     public void RemoveAt(int index) => _entries.RemoveAt(index);
+
+    public void Move(int fromIndex, int toIndex)
+    {
+        if (fromIndex < 0 || fromIndex >= _entries.Count) return;
+        toIndex = Math.Clamp(toIndex, 0, _entries.Count - 1);
+        if (fromIndex == toIndex) return;
+        var entry = _entries[fromIndex];
+        _entries.RemoveAt(fromIndex);
+        _entries.Insert(toIndex, entry);
+    }
+
+    public void ReorderEntries(IEnumerable<PlaylistEntry> orderedEntries)
+    {
+        var newOrder = orderedEntries.ToList();
+        _entries.Clear();
+        _entries.AddRange(newOrder);
+    }
 }
