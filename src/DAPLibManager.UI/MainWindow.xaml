@@ -12,54 +12,12 @@
 
     <Grid Margin="12">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="8" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="8" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Toolbar -->
-        <Grid Grid.Row="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-
-            <Button x:Name="SelectFolderButton"
-                    Grid.Column="0"
-                    Content="Select Folder"
-                    Width="110" Height="30"
-                    Click="SelectFolderButton_Click" />
-
-            <TextBlock x:Name="FolderPathText"
-                       Grid.Column="1"
-                       Text="No folder selected"
-                       VerticalAlignment="Center"
-                       Margin="10,0"
-                       Foreground="Gray"
-                       TextTrimming="CharacterEllipsis" />
-
-            <Button x:Name="ScanButton"
-                    Grid.Column="2"
-                    Content="Scan Library"
-                    Width="110" Height="30"
-                    IsEnabled="False"
-                    Click="ScanButton_Click" />
-        </Grid>
-
-        <!-- Search bar -->
-        <TextBox x:Name="SearchBox"
-                 Grid.Row="2"
-                 Height="30"
-                 Padding="8,0"
-                 VerticalContentAlignment="Center"
-                 TextChanged="SearchBox_TextChanged" />
-
         <!-- 3-panel content -->
-        <Grid Grid.Row="4">
+        <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="3*" MinWidth="200" />
                 <ColumnDefinition Width="6" />
@@ -68,28 +26,84 @@
                 <ColumnDefinition Width="2*" MinWidth="150" />
             </Grid.ColumnDefinitions>
 
-            <!-- Library TrackListView -->
-            <ListView x:Name="TrackListView"
-                      Grid.Column="0"
-                      VirtualizingPanel.IsVirtualizing="True"
-                      VirtualizingPanel.VirtualizationMode="Recycling"
-                      PreviewMouseLeftButtonDown="TrackListView_PreviewMouseLeftButtonDown"
-                      PreviewMouseMove="TrackListView_PreviewMouseMove">
-                <ListView.View>
-                    <GridView>
-                        <GridViewColumn Header="Title" Width="220"
-                                        DisplayMemberBinding="{Binding Title}" />
-                        <GridViewColumn Header="Artist" Width="140"
-                                        DisplayMemberBinding="{Binding ArtistName}" />
-                        <GridViewColumn Header="Album" Width="140"
-                                        DisplayMemberBinding="{Binding AlbumTitle}" />
-                        <GridViewColumn Header="Time" Width="60"
-                                        DisplayMemberBinding="{Binding Duration, StringFormat=mm\\:ss}" />
-                        <GridViewColumn Header="Path" Width="200"
-                                        DisplayMemberBinding="{Binding FilePath, Converter={StaticResource RelativePath}}" />
-                    </GridView>
-                </ListView.View>
-            </ListView>
+            <!-- Left: Toolbar + Search + TrackListView -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="8" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="8" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Toolbar -->
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Button x:Name="SelectFolderButton"
+                            Grid.Column="0"
+                            Width="36" Height="30"
+                            ToolTip="Select Folder"
+                            Click="SelectFolderButton_Click">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE838;" FontSize="16" />
+                    </Button>
+
+                    <TextBlock x:Name="FolderPathText"
+                               Grid.Column="1"
+                               Text="No folder selected"
+                               VerticalAlignment="Center"
+                               Margin="10,0"
+                               Foreground="Gray"
+                               TextTrimming="CharacterEllipsis" />
+
+                    <Button x:Name="ScanButton"
+                            Grid.Column="2"
+                            Width="36" Height="30"
+                            IsEnabled="False"
+                            ToolTip="Scan Library"
+                            Click="ScanButton_Click">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE72C;" FontSize="16" />
+                    </Button>
+                </Grid>
+
+                <!-- Search bar -->
+                <TextBox x:Name="SearchBox"
+                         Grid.Row="2"
+                         Height="30"
+                         Padding="8,0"
+                         VerticalContentAlignment="Center"
+                         TextChanged="SearchBox_TextChanged" />
+
+                <!-- Library TrackListView -->
+                <ListView x:Name="TrackListView"
+                          Grid.Row="4"
+                          VirtualizingPanel.IsVirtualizing="True"
+                          VirtualizingPanel.VirtualizationMode="Recycling"
+                          PreviewMouseLeftButtonDown="TrackListView_PreviewMouseLeftButtonDown"
+                          PreviewMouseMove="TrackListView_PreviewMouseMove">
+                    <ListView.ContextMenu>
+                        <ContextMenu Opened="TrackContextMenu_Opened" />
+                    </ListView.ContextMenu>
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Title" Width="220"
+                                            DisplayMemberBinding="{Binding Title}" />
+                            <GridViewColumn Header="Artist" Width="140"
+                                            DisplayMemberBinding="{Binding ArtistName}" />
+                            <GridViewColumn Header="Album" Width="140"
+                                            DisplayMemberBinding="{Binding AlbumTitle}" />
+                            <GridViewColumn Header="Time" Width="60"
+                                            DisplayMemberBinding="{Binding Duration, StringFormat=mm\\:ss}" />
+                            <GridViewColumn Header="Path" Width="200"
+                                            DisplayMemberBinding="{Binding FilePath, Converter={StaticResource RelativePath}}" />
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </Grid>
 
             <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Background="Transparent" />
 
@@ -104,10 +118,13 @@
                 <Grid Grid.Row="0" Margin="0,0,0,4">
                     <TextBlock Text="Playlists" VerticalAlignment="Center" FontWeight="SemiBold" />
                     <Button x:Name="NewPlaylistButton"
-                            Content="+" Width="24" Height="24"
+                            Width="24" Height="24"
                             HorizontalAlignment="Right"
                             IsEnabled="False"
-                            Click="NewPlaylistButton_Click" />
+                            ToolTip="New Playlist"
+                            Click="NewPlaylistButton_Click">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE710;" FontSize="13" />
+                    </Button>
                 </Grid>
 
                 <ListView x:Name="PlaylistListView"
@@ -131,10 +148,12 @@
 
                 <Button x:Name="DeletePlaylistButton"
                         Grid.Row="2"
-                        Content="Delete"
                         Height="28" Margin="0,4,0,0"
                         IsEnabled="False"
-                        Click="DeletePlaylistButton_Click" />
+                        ToolTip="Delete Playlist"
+                        Click="DeletePlaylistButton_Click">
+                    <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74D;" FontSize="16" />
+                </Button>
             </Grid>
 
             <GridSplitter Grid.Column="3" HorizontalAlignment="Stretch" Background="Transparent" />
@@ -145,7 +164,9 @@
                       VirtualizingPanel.IsVirtualizing="True"
                       AllowDrop="True"
                       DragOver="PlaylistTrackListView_DragOver"
-                      Drop="PlaylistTrackListView_Drop">
+                      Drop="PlaylistTrackListView_Drop"
+                      PreviewMouseLeftButtonDown="PlaylistTrackListView_PreviewMouseLeftButtonDown"
+                      PreviewMouseMove="PlaylistTrackListView_PreviewMouseMove">
                 <ListView.ContextMenu>
                     <ContextMenu Opened="PlaylistTrackContextMenu_Opened" />
                 </ListView.ContextMenu>
@@ -161,7 +182,7 @@
         </Grid>
 
         <!-- Status bar -->
-        <Grid Grid.Row="5" Margin="0,6,0,0">
+        <Grid Grid.Row="1" Margin="0,6,0,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
