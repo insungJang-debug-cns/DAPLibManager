@@ -32,6 +32,10 @@ public partial class MainWindow : Window
     private List<PlaylistEntry>? _dragOriginalOrder;
     private PlaylistEntry? _ghostEntry;
 
+    private bool _isPlaying;
+    private bool _isSeeking;
+    private readonly DispatcherTimer _seekTimer;
+
     public MainWindow(
         ILibrarySyncService librarySyncService,
         ITrackRepository trackRepository,
@@ -53,7 +57,7 @@ public partial class MainWindow : Window
         {
             _dotCount = (_dotCount % 3) + 1;
             var elapsed = (int)_scanStopwatch.Elapsed.TotalSeconds;
-            StatusText.Text = $"Scanning{new string('.', _dotCount)}  {elapsed}s";
+            StatusText.Text = $"스캔 중{new string('.', _dotCount)}  {elapsed}s";
         };
 
         _searchDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
@@ -61,6 +65,14 @@ public partial class MainWindow : Window
         {
             _searchDebounce.Stop();
             await ExecuteSearchAsync(SearchBox.Text);
+        };
+
+        _seekTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        _seekTimer.Tick += (_, _) =>
+        {
+            if (_isSeeking || !MediaPlayer.NaturalDuration.HasTimeSpan) return;
+            SeekBar.Value = MediaPlayer.Position.TotalSeconds;
+            TimeText.Text = $"{MediaPlayer.Position:mm\\:ss} / {MediaPlayer.NaturalDuration.TimeSpan:mm\\:ss}";
         };
 
         RestoreLastFolder();
@@ -115,12 +127,12 @@ public partial class MainWindow : Window
             var result = await _librarySyncService.SyncLibraryAsync(_selectedFolder);
             var tracks = await _trackRepository.GetTracksInFolderAsync(_selectedFolder);
             TrackListView.ItemsSource = tracks;
-            StatusText.Text = $"{tracks.Count} track(s)  |  +{result.Added}  ~{result.Updated}  -{result.Deleted}  ={result.Unchanged}";
+            StatusText.Text = $"총 {tracks.Count}곡";
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Scan] {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
-            StatusText.Text = $"Error: {ex.Message}";
+            StatusText.Text = $"오류: {ex.Message}";
         }
         finally
         {
@@ -144,7 +156,7 @@ public partial class MainWindow : Window
             {
                 var tracks = await _trackRepository.GetTracksInFolderAsync(_selectedFolder);
                 TrackListView.ItemsSource = tracks;
-                StatusText.Text = $"{tracks.Count} track(s)";
+                StatusText.Text = $"총 {tracks.Count}곡";
             }
             else
             {
@@ -160,12 +172,12 @@ public partial class MainWindow : Window
             var results = await _trackRepository.SearchTracksAsync(query);
             sw.Stop();
             TrackListView.ItemsSource = results;
-            StatusText.Text = $"{results.Count} result(s) for \"{query}\" ({sw.Elapsed.TotalMilliseconds:F1}ms)";
+            StatusText.Text = $"\"{query}\" 검색 결과 {results.Count}곡 ({sw.Elapsed.TotalMilliseconds:F1}ms)";
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Search] {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
-            StatusText.Text = $"Search error: {ex.Message}";
+            StatusText.Text = $"검색 오류: {ex.Message}";
         }
     }
 
@@ -185,13 +197,20 @@ public partial class MainWindow : Window
             ? new ObservableCollection<PlaylistEntry>(_currentPlaylist.Entries)
             : null;
         PlaylistTrackListView.ItemsSource = _playlistTrackItems;
+        UpdateTrackCount();
+    }
+
+    private void UpdateTrackCount()
+    {
+        var count = _currentPlaylist?.Entries.Count;
+        PlaylistTrackCountText.Text = count.HasValue ? $"{count} 곡" : string.Empty;
     }
 
     private void PlaylistListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         _currentPlaylist = PlaylistListView.SelectedItem as Playlist;
         DeletePlaylistButton.IsEnabled = _currentPlaylist != null;
-        PlaylistNameText.Text = _currentPlaylist?.Name ?? "—";
+        PlaylistNameText.Text = _currentPlaylist?.Name ?? string.Empty;
         RefreshPlaylistTracks();
     }
 
@@ -572,4 +591,87 @@ public partial class MainWindow : Window
 
         return win.ShowDialog() == true ? tb.Text : null;
     }
+
+    // ── Playback ─────────────────────────────────────────────────────────────
+
+    private void TrackListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (TrackListView.SelectedItem is Track track)
+            PlayTrack(track.FilePath, string.IsNullOrEmpty(track.ArtistName)
+                ? track.Title : $"{track.Title}  —  {track.ArtistName}");
+    }
+
+    private void PlaylistTrackListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (PlaylistTrackListView.SelectedItem is PlaylistEntry entry)
+            PlayTrack(entry.TrackPath, entry.Title);
+    }
+
+    private void PlayTrack(string filePath, string title)
+    {
+        MediaPlayer.Source = new Uri(filePath);
+        MediaPlayer.Play();
+        _isPlaying = true;
+        NowPlayingText.Text = title;
+        PlayPauseIcon.Text = "\uE769";
+        PlaybackArtImage.Source = AlbumArtLoader.GetForFile(filePath) ?? AlbumArtLoader.DefaultArt;
+        PlaybackBar.Visibility = Visibility.Visible;
+        _seekTimer.Start();
+    }
+
+    private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isPlaying)
+        {
+            MediaPlayer.Pause();
+            _isPlaying = false;
+            PlayPauseIcon.Text = "\uE768";
+            _seekTimer.Stop();
+        }
+        else
+        {
+            MediaPlayer.Play();
+            _isPlaying = true;
+            PlayPauseIcon.Text = "\uE769";
+            _seekTimer.Start();
+        }
+    }
+
+    private void StopButton_Click(object sender, RoutedEventArgs e)
+    {
+        MediaPlayer.Stop();
+        _isPlaying = false;
+        _seekTimer.Stop();
+        SeekBar.Value = 0;
+        TimeText.Text = string.Empty;
+        PlayPauseIcon.Text = "\uE768";
+        PlaybackBar.Visibility = Visibility.Collapsed;
+    }
+
+    private void MediaPlayer_MediaOpened(object sender, RoutedEventArgs e)
+    {
+        if (MediaPlayer.NaturalDuration.HasTimeSpan)
+            SeekBar.Maximum = MediaPlayer.NaturalDuration.TimeSpan.TotalSeconds;
+    }
+
+    private void MediaPlayer_MediaEnded(object sender, RoutedEventArgs e)
+    {
+        _isPlaying = false;
+        _seekTimer.Stop();
+        PlayPauseIcon.Text = "\uE768";
+        SeekBar.Value = 0;
+        TimeText.Text = string.Empty;
+    }
+
+    private void SeekBar_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        => _isSeeking = true;
+
+    private void SeekBar_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        _isSeeking = false;
+        MediaPlayer.Position = TimeSpan.FromSeconds(SeekBar.Value);
+    }
+
+    private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        => MediaPlayer.Volume = VolumeSlider.Value;
 }

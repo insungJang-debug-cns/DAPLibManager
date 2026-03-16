@@ -8,10 +8,10 @@ namespace DAPLibManager.UI.Converters;
 
 public sealed class AlbumArtConverter : IValueConverter
 {
-    public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        if (value is not string filePath) return null;
-        return AlbumArtLoader.GetForFile(filePath);
+        if (value is not string filePath) return AlbumArtLoader.DefaultArt;
+        return AlbumArtLoader.GetForFile(filePath) ?? AlbumArtLoader.DefaultArt;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
@@ -20,6 +20,9 @@ public sealed class AlbumArtConverter : IValueConverter
 
 public static class AlbumArtLoader
 {
+    public static readonly BitmapImage DefaultArt =
+        new(new Uri("pack://application:,,,/default_art.png"));
+
     // 파일 경로 기준 캐시 - 각 트랙의 임베디드 아트를 개별 저장
     private static readonly ConcurrentDictionary<string, BitmapImage?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
