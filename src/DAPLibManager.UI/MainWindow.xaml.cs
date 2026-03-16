@@ -191,6 +191,7 @@ public partial class MainWindow : Window
     {
         _currentPlaylist = PlaylistListView.SelectedItem as Playlist;
         DeletePlaylistButton.IsEnabled = _currentPlaylist != null;
+        PlaylistNameText.Text = _currentPlaylist?.Name ?? "—";
         RefreshPlaylistTracks();
     }
 

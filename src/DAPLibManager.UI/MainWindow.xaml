@@ -8,6 +8,7 @@
 
     <Window.Resources>
         <converters:RelativePathConverter x:Key="RelativePath" />
+        <converters:AlbumArtConverter x:Key="AlbumArt" />
     </Window.Resources>
 
     <Grid Margin="12">
@@ -88,13 +89,28 @@
                     <ListView.ContextMenu>
                         <ContextMenu Opened="TrackContextMenu_Opened" />
                     </ListView.ContextMenu>
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="MinHeight" Value="42" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
                     <ListView.View>
                         <GridView>
-                            <GridViewColumn Header="Title" Width="220"
+                            <GridViewColumn Width="46">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Image Width="36" Height="36"
+                                               Source="{Binding FilePath, Converter={StaticResource AlbumArt}}"
+                                               Stretch="UniformToFill"
+                                               RenderOptions.BitmapScalingMode="HighQuality" />
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="Title" Width="180"
                                             DisplayMemberBinding="{Binding Title}" />
-                            <GridViewColumn Header="Artist" Width="140"
+                            <GridViewColumn Header="Artist" Width="130"
                                             DisplayMemberBinding="{Binding ArtistName}" />
-                            <GridViewColumn Header="Album" Width="140"
+                            <GridViewColumn Header="Album" Width="130"
                                             DisplayMemberBinding="{Binding AlbumTitle}" />
                             <GridViewColumn Header="Time" Width="60"
                                             DisplayMemberBinding="{Binding Duration, StringFormat=mm\\:ss}" />
@@ -159,28 +175,42 @@
             <GridSplitter Grid.Column="3" HorizontalAlignment="Stretch" Background="Transparent" />
 
             <!-- Playlist track list -->
-            <ListView x:Name="PlaylistTrackListView"
-                      Grid.Column="4"
-                      VirtualizingPanel.IsVirtualizing="True"
-                      AllowDrop="True"
-                      DragEnter="PlaylistTrackListView_DragEnter"
-                      DragLeave="PlaylistTrackListView_DragLeave"
-                      DragOver="PlaylistTrackListView_DragOver"
-                      Drop="PlaylistTrackListView_Drop"
-                      PreviewMouseLeftButtonDown="PlaylistTrackListView_PreviewMouseLeftButtonDown"
-                      PreviewMouseMove="PlaylistTrackListView_PreviewMouseMove">
-                <ListView.ContextMenu>
-                    <ContextMenu Opened="PlaylistTrackContextMenu_Opened" />
-                </ListView.ContextMenu>
-                <ListView.View>
-                    <GridView>
-                        <GridViewColumn Header="Title" Width="220"
-                                        DisplayMemberBinding="{Binding Title}" />
-                        <GridViewColumn Header="Time" Width="60"
-                                        DisplayMemberBinding="{Binding Duration, StringFormat=mm\\:ss}" />
-                    </GridView>
-                </ListView.View>
-            </ListView>
+            <Grid Grid.Column="4">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <TextBlock x:Name="PlaylistNameText"
+                           Grid.Row="0"
+                           Margin="0,0,0,4"
+                           FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis"
+                           Text="—" />
+
+                <ListView x:Name="PlaylistTrackListView"
+                          Grid.Row="1"
+                          VirtualizingPanel.IsVirtualizing="True"
+                          AllowDrop="True"
+                          DragEnter="PlaylistTrackListView_DragEnter"
+                          DragLeave="PlaylistTrackListView_DragLeave"
+                          DragOver="PlaylistTrackListView_DragOver"
+                          Drop="PlaylistTrackListView_Drop"
+                          PreviewMouseLeftButtonDown="PlaylistTrackListView_PreviewMouseLeftButtonDown"
+                          PreviewMouseMove="PlaylistTrackListView_PreviewMouseMove">
+                    <ListView.ContextMenu>
+                        <ContextMenu Opened="PlaylistTrackContextMenu_Opened" />
+                    </ListView.ContextMenu>
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Title" Width="220"
+                                            DisplayMemberBinding="{Binding Title}" />
+                            <GridViewColumn Header="Time" Width="60"
+                                            DisplayMemberBinding="{Binding Duration, StringFormat=mm\\:ss}" />
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </Grid>
         </Grid>
 
         <!-- Status bar -->
