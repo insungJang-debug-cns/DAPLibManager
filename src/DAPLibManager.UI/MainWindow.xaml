@@ -248,7 +248,7 @@
         <!-- Playback bar -->
         <Border Grid.Row="2" Margin="0,8,0,0" Padding="8,6"
                 Background="#F5F5F5" CornerRadius="4"
-                x:Name="PlaybackBar" Visibility="Collapsed">
+                x:Name="PlaybackBar">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -266,12 +266,14 @@
 
                 <Button x:Name="PlayPauseButton" Grid.Column="1"
                         Width="32" Height="28" Margin="0,0,4,0"
+                        IsEnabled="False"
                         ToolTip="Play / Pause" Click="PlayPauseButton_Click">
                     <TextBlock x:Name="PlayPauseIcon"
                                FontFamily="Segoe MDL2 Assets" Text="&#xE769;" FontSize="14" />
                 </Button>
                 <Button x:Name="StopButton" Grid.Column="2"
                         Width="32" Height="28" Margin="0,0,10,0"
+                        IsEnabled="False"
                         ToolTip="Stop" Click="StopButton_Click">
                     <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE71A;" FontSize="14" />
                 </Button>
@@ -285,6 +287,7 @@
                                FontSize="12" FontWeight="SemiBold"
                                TextTrimming="CharacterEllipsis" />
                     <Slider x:Name="SeekBar" Grid.Row="1"
+                            IsEnabled="False"
                             Margin="0,2,0,0" VerticalAlignment="Center"
                             PreviewMouseDown="SeekBar_PreviewMouseDown"
                             PreviewMouseUp="SeekBar_PreviewMouseUp" />

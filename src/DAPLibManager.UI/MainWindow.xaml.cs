@@ -615,7 +615,9 @@ public partial class MainWindow : Window
         NowPlayingText.Text = title;
         PlayPauseIcon.Text = "\uE769";
         PlaybackArtImage.Source = AlbumArtLoader.GetForFile(filePath) ?? AlbumArtLoader.DefaultArt;
-        PlaybackBar.Visibility = Visibility.Visible;
+        PlayPauseButton.IsEnabled = true;
+        StopButton.IsEnabled = true;
+        SeekBar.IsEnabled = true;
         _seekTimer.Start();
     }
 
@@ -645,7 +647,8 @@ public partial class MainWindow : Window
         SeekBar.Value = 0;
         TimeText.Text = string.Empty;
         PlayPauseIcon.Text = "\uE768";
-        PlaybackBar.Visibility = Visibility.Collapsed;
+        NowPlayingText.Text = string.Empty;
+        PlaybackArtImage.Source = AlbumArtLoader.DefaultArt;
     }
 
     private void MediaPlayer_MediaOpened(object sender, RoutedEventArgs e)
