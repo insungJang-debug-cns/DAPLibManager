@@ -30,9 +30,9 @@
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="3*" MinWidth="200" />
-                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="2" />
                 <ColumnDefinition Width="160" MinWidth="100" />
-                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="2" />
                 <ColumnDefinition Width="2*" MinWidth="150" />
             </Grid.ColumnDefinitions>
 
@@ -131,7 +131,7 @@
                 </ListView>
             </Grid>
 
-            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Background="Transparent" />
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Background="#DDDDDD" />
 
             <!-- Playlist panel -->
             <Grid Grid.Column="2">
@@ -182,7 +182,7 @@
                 </Button>
             </Grid>
 
-            <GridSplitter Grid.Column="3" HorizontalAlignment="Stretch" Background="Transparent" />
+            <GridSplitter Grid.Column="3" HorizontalAlignment="Stretch" Background="#DDDDDD" />
 
             <!-- Playlist track list -->
             <Grid Grid.Column="4">

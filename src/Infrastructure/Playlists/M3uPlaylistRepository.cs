@@ -7,10 +7,16 @@ namespace Infrastructure.Playlists;
 
 public sealed class M3uPlaylistRepository : IPlaylistRepository
 {
+    private static string PlaylistFolder(string folder) =>
+        Path.Combine(folder, "Playlists");
+
     public async Task<IReadOnlyList<Playlist>> GetPlaylistsAsync(
         string folder, CancellationToken cancellationToken = default)
     {
-        var m3uFiles = Directory.GetFiles(folder, "*.m3u", SearchOption.TopDirectoryOnly);
+        var playlistDir = PlaylistFolder(folder);
+        if (!Directory.Exists(playlistDir))
+            return [];
+        var m3uFiles = Directory.GetFiles(playlistDir, "*.m3u", SearchOption.TopDirectoryOnly);
         var playlists = new List<Playlist>();
 
         foreach (var file in m3uFiles.OrderBy(f => f))
@@ -32,8 +38,10 @@ public sealed class M3uPlaylistRepository : IPlaylistRepository
     public async Task<Playlist> CreatePlaylistAsync(
         string folder, string name, CancellationToken cancellationToken = default)
     {
+        var playlistDir = PlaylistFolder(folder);
+        Directory.CreateDirectory(playlistDir);
         var fileName = SanitizeFileName(name) + ".m3u";
-        var filePath = Path.Combine(folder, fileName);
+        var filePath = Path.Combine(playlistDir, fileName);
         var playlist = new Playlist(name, filePath);
         await SavePlaylistAsync(playlist, cancellationToken);
         return playlist;

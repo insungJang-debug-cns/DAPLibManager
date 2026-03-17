@@ -563,7 +563,7 @@ public partial class MainWindow : Window
     {
         var win = new Window
         {
-            Title = title, Width = 300, Height = 120,
+            Title = title, Width = 320, Height = 150,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Owner = this, ResizeMode = ResizeMode.NoResize, ShowInTaskbar = false
         };
