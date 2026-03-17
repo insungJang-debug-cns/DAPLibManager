@@ -53,7 +53,8 @@ public class MusicLibraryDbContext(DbContextOptions<MusicLibraryDbContext> optio
         foreach (var sql in new[]
         {
             "ALTER TABLE Tracks ADD COLUMN FileSize INTEGER NOT NULL DEFAULT 0",
-            "ALTER TABLE Tracks ADD COLUMN LastModifiedUtc TEXT NOT NULL DEFAULT '0001-01-01T00:00:00.0000000Z'"
+            "ALTER TABLE Tracks ADD COLUMN LastModifiedUtc TEXT NOT NULL DEFAULT '0001-01-01T00:00:00.0000000Z'",
+            "ALTER TABLE Tracks ADD COLUMN IsFavorite INTEGER NOT NULL DEFAULT 0"
         })
         {
             try { await Database.ExecuteSqlRawAsync(sql, cancellationToken); }

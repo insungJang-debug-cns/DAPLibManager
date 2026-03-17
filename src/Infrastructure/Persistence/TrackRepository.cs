@@ -50,10 +50,10 @@ public sealed class TrackRepository(IDbContextFactory<MusicLibraryDbContext> fac
         // Load only the fingerprint columns — no full Track materialization
         return await context.Tracks
             .Where(t => t.FilePath.StartsWith(rootFolder))
-            .Select(t => new { t.Id, t.FilePath, t.FileSize, t.LastModifiedUtc })
+            .Select(t => new { t.Id, t.FilePath, t.FileSize, t.LastModifiedUtc, t.IsFavorite })
             .ToDictionaryAsync(
                 t => t.FilePath,
-                t => new TrackFileInfo(t.Id, t.FileSize, t.LastModifiedUtc),
+                t => new TrackFileInfo(t.Id, t.FileSize, t.LastModifiedUtc, t.IsFavorite),
                 StringComparer.OrdinalIgnoreCase,
                 cancellationToken);
     }
@@ -103,6 +103,14 @@ public sealed class TrackRepository(IDbContextFactory<MusicLibraryDbContext> fac
             .Where(t => pathList.Contains(t.FilePath))
             .AsNoTracking()
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task SetFavoriteAsync(Guid id, bool isFavorite, CancellationToken cancellationToken = default)
+    {
+        await using var context = await factory.CreateDbContextAsync(cancellationToken);
+        await context.Tracks
+            .Where(t => t.Id == id)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.IsFavorite, isFavorite), cancellationToken);
     }
 
     private static string BuildFtsQuery(string query)

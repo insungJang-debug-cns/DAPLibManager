@@ -12,6 +12,8 @@ using Microsoft.Win32;
 
 namespace DAPLibManager.UI;
 
+internal record DirFilterItem(string Display, string? Path);
+
 public partial class MainWindow : Window
 {
     private readonly ILibrarySyncService _librarySyncService;
@@ -26,6 +28,8 @@ public partial class MainWindow : Window
     private List<Playlist> _playlists = [];
     private Playlist? _currentPlaylist;
     private ObservableCollection<PlaylistEntry>? _playlistTrackItems;
+    private List<Track> _allTracks = [];
+    private List<Track> _currentTracks = [];
 
     private Point _dragStartPoint;
     private Point _playlistDragStartPoint;
@@ -126,7 +130,9 @@ public partial class MainWindow : Window
         {
             var result = await _librarySyncService.SyncLibraryAsync(_selectedFolder);
             var tracks = await _trackRepository.GetTracksInFolderAsync(_selectedFolder);
-            TrackListView.ItemsSource = tracks;
+            _allTracks = [.. tracks];
+            PopulateDirTree();
+            ApplyDirFilter();
             StatusText.Text = $"총 {tracks.Count}곡";
         }
         catch (Exception ex)
@@ -152,17 +158,7 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrWhiteSpace(query))
         {
-            if (_selectedFolder is not null)
-            {
-                var tracks = await _trackRepository.GetTracksInFolderAsync(_selectedFolder);
-                TrackListView.ItemsSource = tracks;
-                StatusText.Text = $"총 {tracks.Count}곡";
-            }
-            else
-            {
-                TrackListView.ItemsSource = null;
-                StatusText.Text = string.Empty;
-            }
+            ApplyDirFilter();
             return;
         }
 
@@ -171,14 +167,77 @@ public partial class MainWindow : Window
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var results = await _trackRepository.SearchTracksAsync(query);
             sw.Stop();
-            TrackListView.ItemsSource = results;
-            StatusText.Text = $"\"{query}\" 검색 결과 {results.Count}곡 ({sw.Elapsed.TotalMilliseconds:F1}ms)";
+            var filtered = ApplyDirFilterToList(results);
+            _currentTracks = [.. filtered];
+            TrackListView.ItemsSource = _currentTracks;
+            StatusText.Text = $"\"{query}\" 검색 결과 {_currentTracks.Count}곡 ({sw.Elapsed.TotalMilliseconds:F1}ms)";
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Search] {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
             StatusText.Text = $"검색 오류: {ex.Message}";
         }
+    }
+
+    // ── Directory Filter ─────────────────────────────────────────────────────
+
+    private void PopulateDirTree()
+    {
+        if (_selectedFolder is null) return;
+
+        DirTreeView.Items.Clear();
+        var root = new TreeViewItem
+        {
+            Header = "전체",
+            Tag = (string?)null,
+            IsSelected = true,
+            IsExpanded = true
+        };
+        AddDirChildren(root, _selectedFolder);
+        DirTreeView.Items.Add(root);
+    }
+
+    private static void AddDirChildren(TreeViewItem parent, string dirPath)
+    {
+        try
+        {
+            foreach (var sub in Directory.GetDirectories(dirPath).OrderBy(d => d, StringComparer.OrdinalIgnoreCase))
+            {
+                var item = new TreeViewItem
+                {
+                    Header = Path.GetFileName(sub),
+                    Tag = sub
+                };
+                AddDirChildren(item, sub);
+                parent.Items.Add(item);
+            }
+        }
+        catch { /* 접근 불가 디렉토리 무시 */ }
+    }
+
+    private void ApplyDirFilter()
+    {
+        var filtered = ApplyDirFilterToList(_allTracks);
+        _currentTracks = [.. filtered];
+        TrackListView.ItemsSource = _currentTracks;
+        StatusText.Text = $"총 {_currentTracks.Count}곡";
+    }
+
+    private IEnumerable<Track> ApplyDirFilterToList(IEnumerable<Track> tracks)
+    {
+        if (DirTreeView.SelectedItem is TreeViewItem { Tag: string selectedPath })
+            return tracks.Where(t => t.FilePath.StartsWith(selectedPath + Path.DirectorySeparatorChar,
+                StringComparison.OrdinalIgnoreCase));
+        return tracks;
+    }
+
+    private void DirTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+    {
+        if (_allTracks.Count == 0) return;
+        if (!string.IsNullOrWhiteSpace(SearchBox.Text))
+            _ = ExecuteSearchAsync(SearchBox.Text);
+        else
+            ApplyDirFilter();
     }
 
     // ── Playlist Panel ───────────────────────────────────────────────────────
@@ -590,6 +649,18 @@ public partial class MainWindow : Window
         tb.Focus();
 
         return win.ShowDialog() == true ? tb.Text : null;
+    }
+
+    // ── Favorites ────────────────────────────────────────────────────────────
+
+    private async void StarButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (((Button)sender).DataContext is not Track track) return;
+        var newValue = !track.IsFavorite;
+        track.SetFavorite(newValue);
+        await _trackRepository.SetFavoriteAsync(track.Id, newValue);
+        TrackListView.Items.Refresh();
+        e.Handled = true; // prevent row selection change
     }
 
     // ── Playback ─────────────────────────────────────────────────────────────

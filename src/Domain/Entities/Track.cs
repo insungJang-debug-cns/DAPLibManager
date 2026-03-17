@@ -13,6 +13,7 @@ public class Track
     public string FilePath { get; private set; }
     public long FileSize { get; private set; }
     public DateTime LastModifiedUtc { get; private set; }
+    public bool IsFavorite { get; private set; }
 
     public Track(
         Guid id,
@@ -44,6 +45,8 @@ public class Track
         FileSize = fileSize;
         LastModifiedUtc = lastModifiedUtc;
     }
+
+    public void SetFavorite(bool value) { IsFavorite = value; }
 
     public void UpdateFileInfo(long fileSize, DateTime lastModifiedUtc)
     {

@@ -94,6 +94,7 @@ public sealed class LibrarySyncService(
                     year: track.Year,
                     fileSize: size,
                     lastModifiedUtc: mtime);
+                if (existingInfo.IsFavorite) updated.SetFavorite(true);
                 updatedTracks.Add(updated);
             }
         });

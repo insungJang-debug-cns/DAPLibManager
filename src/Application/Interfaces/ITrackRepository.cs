@@ -2,7 +2,7 @@ using Domain.Entities;
 
 namespace Application.Interfaces;
 
-public record TrackFileInfo(Guid Id, long FileSize, DateTime LastModifiedUtc);
+public record TrackFileInfo(Guid Id, long FileSize, DateTime LastModifiedUtc, bool IsFavorite = false);
 
 public interface ITrackRepository
 {
@@ -17,4 +17,5 @@ public interface ITrackRepository
     Task DeleteTracksAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Track>> GetTracksInFolderAsync(string rootFolder, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Track>> GetTracksByFilePathsAsync(IEnumerable<string> filePaths, CancellationToken cancellationToken = default);
+    Task SetFavoriteAsync(Guid id, bool isFavorite, CancellationToken cancellationToken = default);
 }

@@ -28,6 +28,9 @@ internal sealed class TrackConfiguration : IEntityTypeConfiguration<Track>
         builder.Property(t => t.FileSize)
                .HasDefaultValue(0L);
 
+        builder.Property(t => t.IsFavorite)
+               .HasDefaultValue(false);
+
         builder.Property(t => t.LastModifiedUtc)
                .HasConversion(
                    v => v.ToString("O"),
