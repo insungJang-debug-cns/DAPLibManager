@@ -81,14 +81,29 @@
                     </Button>
                 </Grid>
 
-                <!-- Search bar (full width) -->
-                <TextBox x:Name="SearchBox"
-                         Grid.Row="2"
-                         Height="36"
-                         FontSize="13"
-                         Padding="10,0"
-                         VerticalContentAlignment="Center"
-                         TextChanged="SearchBox_TextChanged" />
+                <!-- Search bar + 즐겨찾기 필터 -->
+                <Grid Grid.Row="2" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="SearchBox"
+                             Grid.Column="0"
+                             FontSize="13"
+                             Padding="10,0"
+                             VerticalContentAlignment="Center"
+                             TextChanged="SearchBox_TextChanged" />
+                    <ToggleButton x:Name="FavoriteFilterBtn"
+                                  Grid.Column="2"
+                                  Width="36" Height="36"
+                                  ToolTip="즐겨찾기만 보기"
+                                  Checked="FavoriteFilterBtn_Changed"
+                                  Unchecked="FavoriteFilterBtn_Changed">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                   x:Name="FavoriteFilterIcon" Text="&#xE734;" />
+                    </ToggleButton>
+                </Grid>
 
                 <!-- TreeView (left) + TrackListView (right) -->
                 <Grid Grid.Row="4">
@@ -422,56 +437,97 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Image x:Name="PlaybackArtImage" Grid.Column="0"
+                <!-- Favorite toggle -->
+                <ToggleButton x:Name="PlaybackFavoriteBtn" Grid.Column="0"
+                              Width="36" Height="36" Margin="0,0,8,0"
+                              IsEnabled="False" VerticalAlignment="Center"
+                              ToolTip="즐겨찾기" Cursor="Hand"
+                              Click="PlaybackFavoriteBtn_Click">
+                    <ToggleButton.Template>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </ControlTemplate>
+                    </ToggleButton.Template>
+                    <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="28">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="&#xE734;" />
+                                <Setter Property="Foreground" Value="#AAAAAA" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
+                                        <Setter Property="Text" Value="&#xE735;" />
+                                        <Setter Property="Foreground" Value="#FFD700" />
+                                    </DataTrigger>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Foreground" Value="#FFAA00" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </ToggleButton>
+
+                <!-- Album art -->
+                <Image x:Name="PlaybackArtImage" Grid.Column="1"
                        Width="90" Height="90" Margin="0,0,14,0"
                        Stretch="UniformToFill"
                        RenderOptions.BitmapScalingMode="HighQuality"
                        Source="default_art.png" />
 
-                <Button x:Name="PlayPauseButton" Grid.Column="1"
-                        Width="38" Height="34" Margin="0,0,6,0"
-                        IsEnabled="False"
-                        ToolTip="Play / Pause" Click="PlayPauseButton_Click">
-                    <TextBlock x:Name="PlayPauseIcon"
-                               FontFamily="Segoe MDL2 Assets" Text="&#xE769;" FontSize="16" />
-                </Button>
-                <Button x:Name="StopButton" Grid.Column="2"
-                        Width="38" Height="34" Margin="0,0,14,0"
-                        IsEnabled="False"
-                        ToolTip="Stop" Click="StopButton_Click">
-                    <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE71A;" FontSize="16" />
-                </Button>
-
-                <Grid Grid.Column="3">
+                <!-- Center: title / seek bar / control buttons -->
+                <Grid Grid.Column="2">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
+
                     <TextBlock x:Name="NowPlayingText" Grid.Row="0"
                                FontSize="13" FontWeight="SemiBold"
                                TextTrimming="CharacterEllipsis" />
+
                     <Slider x:Name="SeekBar" Grid.Row="1"
                             IsEnabled="False"
-                            Margin="0,4,0,0" VerticalAlignment="Center"
+                            IsMoveToPointEnabled="True"
+                            Margin="0,6,0,0" VerticalAlignment="Center"
                             PreviewMouseDown="SeekBar_PreviewMouseDown"
                             PreviewMouseUp="SeekBar_PreviewMouseUp" />
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,6,0,0"
+                                HorizontalAlignment="Center">
+                        <Button x:Name="PlayPauseButton"
+                                Width="38" Height="34" Margin="0,0,6,0"
+                                IsEnabled="False"
+                                ToolTip="재생 / 일시정지" Click="PlayPauseButton_Click">
+                            <TextBlock x:Name="PlayPauseIcon"
+                                       FontFamily="Segoe MDL2 Assets" Text="&#xE769;" FontSize="16" />
+                        </Button>
+                        <Button x:Name="StopButton"
+                                Width="38" Height="34"
+                                IsEnabled="False"
+                                ToolTip="정지" Click="StopButton_Click">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE71A;" FontSize="16" />
+                        </Button>
+                    </StackPanel>
                 </Grid>
 
-                <StackPanel Grid.Column="4" Orientation="Horizontal"
+                <!-- Time + Volume -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal"
                             VerticalAlignment="Center" Margin="14,0,0,0">
                     <TextBlock x:Name="TimeText"
                                VerticalAlignment="Center"
-                               FontSize="12" Foreground="Gray" />
+                               FontSize="12" Foreground="Gray"
+                               Width="110" />
                     <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE767;"
                                FontSize="15" Margin="14,0,6,0" VerticalAlignment="Center" />
                     <Slider x:Name="VolumeSlider"
                             Width="100" VerticalAlignment="Center"
                             Minimum="0" Maximum="1" Value="1"
+                            IsMoveToPointEnabled="True"
                             ValueChanged="VolumeSlider_ValueChanged" />
                 </StackPanel>
             </Grid>

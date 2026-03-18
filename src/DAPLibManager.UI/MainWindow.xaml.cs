@@ -30,6 +30,12 @@ public partial class MainWindow : Window
     private ObservableCollection<PlaylistEntry>? _playlistTrackItems;
     private List<Track> _allTracks = [];
     private List<Track> _currentTracks = [];
+    private bool _showFavoritesOnly = false;
+
+    private enum PlaySource { None, TrackList, PlaylistTrackList }
+    private PlaySource _playSource = PlaySource.None;
+    private int _playingIndex = -1;
+    private Track? _currentPlayingTrack;
 
     private Point _dragStartPoint;
     private Point _playlistDragStartPoint;
@@ -226,9 +232,21 @@ public partial class MainWindow : Window
     private IEnumerable<Track> ApplyDirFilterToList(IEnumerable<Track> tracks)
     {
         if (DirTreeView.SelectedItem is TreeViewItem { Tag: string selectedPath })
-            return tracks.Where(t => t.FilePath.StartsWith(selectedPath + Path.DirectorySeparatorChar,
+            tracks = tracks.Where(t => t.FilePath.StartsWith(selectedPath + Path.DirectorySeparatorChar,
                 StringComparison.OrdinalIgnoreCase));
+        if (_showFavoritesOnly)
+            tracks = tracks.Where(t => t.IsFavorite);
         return tracks;
+    }
+
+    private void FavoriteFilterBtn_Changed(object sender, RoutedEventArgs e)
+    {
+        _showFavoritesOnly = FavoriteFilterBtn.IsChecked == true;
+        FavoriteFilterIcon.Text = _showFavoritesOnly ? "\uE735" : "\uE734";
+        if (!string.IsNullOrWhiteSpace(SearchBox.Text))
+            _ = ExecuteSearchAsync(SearchBox.Text);
+        else
+            ApplyDirFilter();
     }
 
     private void DirTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -660,6 +678,8 @@ public partial class MainWindow : Window
         track.SetFavorite(newValue);
         await _trackRepository.SetFavoriteAsync(track.Id, newValue);
         TrackListView.Items.Refresh();
+        if (_currentPlayingTrack?.Id == track.Id)
+            PlaybackFavoriteBtn.IsChecked = newValue;
         e.Handled = true; // prevent row selection change
     }
 
@@ -668,14 +688,25 @@ public partial class MainWindow : Window
     private void TrackListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (TrackListView.SelectedItem is Track track)
+        {
+            _playSource = PlaySource.TrackList;
+            _playingIndex = TrackListView.SelectedIndex;
+            _currentPlayingTrack = track;
             PlayTrack(track.FilePath, string.IsNullOrEmpty(track.ArtistName)
                 ? track.Title : $"{track.Title}  —  {track.ArtistName}");
+        }
     }
 
     private void PlaylistTrackListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (PlaylistTrackListView.SelectedItem is PlaylistEntry entry)
+        {
+            _playSource = PlaySource.PlaylistTrackList;
+            _playingIndex = PlaylistTrackListView.SelectedIndex;
+            _currentPlayingTrack = _allTracks.FirstOrDefault(t =>
+                t.FilePath.Equals(entry.TrackPath, StringComparison.OrdinalIgnoreCase));
             PlayTrack(entry.TrackPath, entry.Title);
+        }
     }
 
     private void PlayTrack(string filePath, string title)
@@ -689,6 +720,8 @@ public partial class MainWindow : Window
         PlayPauseButton.IsEnabled = true;
         StopButton.IsEnabled = true;
         SeekBar.IsEnabled = true;
+        PlaybackFavoriteBtn.IsEnabled = _currentPlayingTrack is not null;
+        PlaybackFavoriteBtn.IsChecked = _currentPlayingTrack?.IsFavorite == true;
         _seekTimer.Start();
     }
 
@@ -732,9 +765,63 @@ public partial class MainWindow : Window
     {
         _isPlaying = false;
         _seekTimer.Stop();
-        PlayPauseIcon.Text = "\uE768";
         SeekBar.Value = 0;
         TimeText.Text = string.Empty;
+        PlayNext();
+    }
+
+    private void PlayNext()
+    {
+        if (_playSource == PlaySource.TrackList)
+        {
+            int next = _playingIndex + 1;
+            if (next < _currentTracks.Count)
+            {
+                _playingIndex = next;
+                TrackListView.SelectedIndex = next;
+                TrackListView.ScrollIntoView(TrackListView.SelectedItem);
+                var track = _currentTracks[next];
+                _currentPlayingTrack = track;
+                PlayTrack(track.FilePath, string.IsNullOrEmpty(track.ArtistName)
+                    ? track.Title : $"{track.Title}  —  {track.ArtistName}");
+            }
+            else
+            {
+                PlayPauseIcon.Text = "\uE768";
+            }
+        }
+        else if (_playSource == PlaySource.PlaylistTrackList && _playlistTrackItems is not null)
+        {
+            int next = _playingIndex + 1;
+            if (next < _playlistTrackItems.Count)
+            {
+                _playingIndex = next;
+                PlaylistTrackListView.SelectedIndex = next;
+                PlaylistTrackListView.ScrollIntoView(PlaylistTrackListView.SelectedItem);
+                var entry = _playlistTrackItems[next];
+                _currentPlayingTrack = _allTracks.FirstOrDefault(t =>
+                    t.FilePath.Equals(entry.TrackPath, StringComparison.OrdinalIgnoreCase));
+                PlayTrack(entry.TrackPath, entry.Title);
+            }
+            else
+            {
+                PlayPauseIcon.Text = "\uE768";
+            }
+        }
+        else
+        {
+            PlayPauseIcon.Text = "\uE768";
+        }
+    }
+
+    private async void PlaybackFavoriteBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPlayingTrack is null) return;
+        var newValue = !_currentPlayingTrack.IsFavorite;
+        _currentPlayingTrack.SetFavorite(newValue);
+        await _trackRepository.SetFavoriteAsync(_currentPlayingTrack.Id, newValue);
+        PlaybackFavoriteBtn.IsChecked = newValue;
+        TrackListView.Items.Refresh();
     }
 
     private void SeekBar_PreviewMouseDown(object sender, MouseButtonEventArgs e)
